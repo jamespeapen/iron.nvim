@@ -210,6 +210,33 @@ core.focus_on = function(ft)
   end
 end
 
+---Returns the line number of the first non-empty line after the current
+---paragraph. If the cursor is on the last paragraph, returns the last line
+---number.
+---From : https://github.com/R-nvim/R.nvim/blob/6bbd927ce8c799e9de087a2c28a6b7d869fc2e4e/lua/r/cursor.lua#L25
+---@return integer
+core.find_next_paragraph = function()
+    local current_line = vim.api.nvim_win_get_cursor(0)[1]
+    local last_line = vim.api.nvim_buf_line_count(0)
+    local next_empty_line = current_line
+
+    -- Search for the next empty line (paragraph separator)
+    while next_empty_line <= last_line do
+        if vim.fn.trim(vim.fn.getline(next_empty_line)) == "" then break end
+        next_empty_line = next_empty_line + 1
+    end
+
+    -- Move cursor to the first non-empty line after the empty line
+    while next_empty_line <= last_line do
+        if vim.fn.trim(vim.fn.getline(next_empty_line)) ~= "" then
+            return next_empty_line
+        end
+        next_empty_line = next_empty_line + 1
+    end
+
+    return last_line
+end
+
 --- Sends data to the repl
 -- This is a top-level wrapper over the low-level
 -- functions. It should send data to the repl, ensuring
@@ -288,6 +315,15 @@ core.send_line = function()
   }
 
   core.send(nil, cur_line)
+end
+
+core.send_line_down = function()
+    core.send_line()
+    vim.cmd('normal! j')
+    local current_line = vim.api.nvim_win_get_cursor(0)[1]
+    if vim.fn.getline(current_line) == "" then
+        vim.api.nvim_win_set_cursor(0, { core.find_next_paragraph(), 0})
+    end
 end
 
 --- Sends the buffer from the beginning until reching the line where the cursror is (inclusive)
@@ -433,13 +469,21 @@ core.send_word = function()
   end, 100)
 end
 
-
 --- Sends the paragraph to the REPL that the cursor is on
 core.send_paragraph = function()
   vim.cmd('normal! vip')
   vim.defer_fn(function()
     core.visual_send()
   end, 100)
+end
+
+
+
+--- Sends the paragraph to the REPL that the cursor is on
+core.send_paragraph_down = function()
+  vim.cmd('normal! vip')
+    core.visual_send()
+    vim.api.nvim_win_set_cursor(0, { core.find_next_paragraph(), 0})
 end
 
 
@@ -625,10 +669,12 @@ local named_maps = {
   send_motion = {{'n'}, function() require("iron.core").run_motion("send_motion") end},
   send_mark = {{'n'}, core.send_mark},
   send_line = {{'n'}, core.send_line},
+  send_line_down = {{'n'}, core.send_line_down},
   send_until_cursor = {{'n'}, core.send_until_cursor},
   send_file = {{'n'}, core.send_file},
   visual_send = {{'v'}, core.visual_send},
   send_paragraph = {{'n'}, core.send_paragraph},
+  send_paragraph_down = {{'n'}, core.send_paragraph_down},
   send_word = {{'n'}, core.send_word},
 
   -- Marks
