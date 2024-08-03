@@ -425,6 +425,15 @@ core.visual_send = function()
   core.send(nil, core.mark_visual())
 end
 
+--- Sends the word to the REPL that the cursor is on
+core.send_word = function()
+  vim.cmd('normal! viw')
+  vim.defer_fn(function()
+    core.visual_send()
+  end, 100)
+end
+
+
 --- Sends the paragraph to the REPL that the cursor is on
 core.send_paragraph = function()
   vim.cmd('normal! vip')
@@ -620,6 +629,7 @@ local named_maps = {
   send_file = {{'n'}, core.send_file},
   visual_send = {{'v'}, core.visual_send},
   send_paragraph = {{'n'}, core.send_paragraph},
+  send_word = {{'n'}, core.send_word},
 
   -- Marks
   mark_motion = {{'n'}, function() require("iron.core").run_motion("mark_motion") end},
